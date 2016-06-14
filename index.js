@@ -161,6 +161,8 @@ function mp3Duration(filename, cbrEstimate, callback) {
       , offset
       , stat
       , info
+      , count = 0
+      , bitRates = []
       ;
 
     fd = yield $open(filename, 'r');
@@ -182,6 +184,7 @@ function mp3Duration(filename, cbrEstimate, callback) {
         if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) {
           info = parseFrameHeader(buffer);
           if (info.frameSize && info.samples) {
+            if (count < 3 && cbrEstimate) bitRates[count++] = info.bitRate
             offset += info.frameSize;
             duration += ( info.samples / info.sampleRate );
           } else {
@@ -193,7 +196,8 @@ function mp3Duration(filename, cbrEstimate, callback) {
           offset++; //Corrupt file?
         }
 
-        if (cbrEstimate && info) {
+        if (count == 3 && cbrEstimate &&
+            bitRates[0] === bitRates[1] && bitRates[1] == bitRates[2]) {
           return round(estimateDuration(info.bitRate, offset, stat.size));
         }
       }
